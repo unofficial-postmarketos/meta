@@ -27,6 +27,7 @@ that works on both GitHub Actions and Forgejo Actions.
 ## Repository layout
 
 - `AGENTS.md`: this contract.
+- `*.tf`: OpenTofu configuration for GitHub reconciliation.
 - `config/repos.csv`: explicit source-to-target repo mapping.
 - `scripts/*.sh`: portable automation scripts.
 - `.github/workflows/*.yml`: workflow entry points.
@@ -40,6 +41,8 @@ that works on both GitHub Actions and Forgejo Actions.
 
 - `SOURCE_READ_TOKEN` (optional): read token for private GitLab projects.
 - `TARGET_PUSH_TOKEN` (required for mirroring): push token for target forge.
+- `GH_ADMIN_TOKEN` (required for OpenTofu reconciliation): GitHub token with
+  repository administration permissions for the target org.
 - Never log tokens. Never commit credentials. Never enable shell tracing in CI.
 
 ## Mirroring contract

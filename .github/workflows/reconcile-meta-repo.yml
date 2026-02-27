@@ -1,0 +1,26 @@
+name: Reconcile Meta Repository
+
+on:
+  workflow_dispatch:
+
+jobs:
+  reconcile:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Install OpenTofu
+        shell: sh
+        env:
+          TOFU_VERSION: 1.10.7
+        run: |
+          scripts/install_tofu.sh "$TOFU_VERSION" "$HOME/.local/bin"
+          printf '%s\n' "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Reconcile meta repository
+        shell: sh
+        env:
+          GH_ADMIN_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
+        run: scripts/tofu_reconcile_meta.sh
