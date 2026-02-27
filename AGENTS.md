@@ -43,6 +43,8 @@ that works on both GitHub Actions and Forgejo Actions.
 - `TARGET_PUSH_TOKEN` (required for mirroring): push token for target forge.
 - `GH_ADMIN_TOKEN` (required for OpenTofu reconciliation): GitHub token with
   repository administration permissions for the target org.
+- `TOFU_STATE_PASSPHRASE` (recommended): passphrase for OpenTofu state/plan
+  encryption. If omitted, automation falls back to `GH_ADMIN_TOKEN`.
 - Never log tokens. Never commit credentials. Never enable shell tracing in CI.
 
 ## Mirroring contract

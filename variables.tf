@@ -15,3 +15,9 @@ variable "meta_repository_name" {
   type        = string
   default     = "meta"
 }
+
+variable "tofu_state_passphrase" {
+  description = "Passphrase used for OpenTofu state and plan encryption."
+  type        = string
+  sensitive   = true
+}

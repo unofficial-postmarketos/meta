@@ -6,6 +6,11 @@ on:
 jobs:
   reconcile:
     runs-on: ubuntu-latest
+    concurrency:
+      group: reconcile-meta-repo-state
+      cancel-in-progress: false
+    permissions:
+      contents: write
 
     steps:
       - name: Checkout repository
@@ -23,4 +28,22 @@ jobs:
         shell: sh
         env:
           GH_ADMIN_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
+          TOFU_STATE_PASSPHRASE: ${{ secrets.TOFU_STATE_PASSPHRASE }}
         run: scripts/tofu_reconcile_meta.sh
+
+      - name: Commit and push state updates
+        shell: sh
+        env:
+          GIT_AUTHOR_NAME: unofficial-postmarketos-bot
+          GIT_AUTHOR_EMAIL: actions@users.noreply.github.com
+          GIT_COMMITTER_NAME: unofficial-postmarketos-bot
+          GIT_COMMITTER_EMAIL: actions@users.noreply.github.com
+        run: |
+          if [ -z "$(git status --porcelain -- terraform.tfstate)" ]; then
+            printf 'state unchanged; nothing to commit\n'
+            exit 0
+          fi
+
+          git add terraform.tfstate
+          git commit -m "chore(tofu): reconcile encrypted state"
+          git push origin HEAD:main

@@ -15,6 +15,23 @@ else
     exit 1
 fi
 
+if [ -n "${TF_VAR_tofu_state_passphrase:-}" ]; then
+    :
+elif [ -n "${TOFU_STATE_PASSPHRASE:-}" ]; then
+    export TF_VAR_tofu_state_passphrase=$TOFU_STATE_PASSPHRASE
+elif [ -n "${GH_ADMIN_TOKEN:-}" ]; then
+    export TF_VAR_tofu_state_passphrase=$GH_ADMIN_TOKEN
+else
+    printf 'set TF_VAR_tofu_state_passphrase or TOFU_STATE_PASSPHRASE\n' >&2
+    exit 1
+fi
+
+passphrase_length=$(printf '%s' "$TF_VAR_tofu_state_passphrase" | wc -c | tr -d '[:space:]')
+if [ "$passphrase_length" -lt 16 ]; then
+    printf 'TOFU_STATE_PASSPHRASE must be at least 16 characters\n' >&2
+    exit 1
+fi
+
 if [ -n "${TF_VAR_github_owner:-}" ]; then
     :
 elif [ -n "${GITHUB_OWNER:-}" ]; then
