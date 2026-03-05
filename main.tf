@@ -43,7 +43,7 @@ resource "github_repository" "mirror" {
   has_projects           = false
   delete_branch_on_merge = false
 
-  allow_merge_commit = false
+  allow_merge_commit = true
   allow_rebase_merge = false
   allow_squash_merge = false
 
