@@ -9,12 +9,12 @@ terraform {
   }
 
   encryption {
-    key_provider "pbkdf2" "state" {
-      passphrase = var.tofu_state_passphrase
+    key_provider "external" "state" {
+      command = ["python3", "${path.module}/scripts/tofu_state_key_provider.py"]
     }
 
     method "aes_gcm" "state" {
-      keys = key_provider.pbkdf2.state
+      keys = key_provider.external.state
     }
 
     state {
@@ -31,5 +31,4 @@ terraform {
 
 provider "github" {
   owner = var.github_owner
-  token = var.github_token
 }
