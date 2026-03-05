@@ -16,19 +16,28 @@ def main() -> int:
         print(json.dumps({"include": []}))
         return 0
 
-    with manifest.open("r", encoding="utf-8", newline="") as handle:
-        lines = [line for line in handle if line.strip() and not line.startswith("#")]
-
-    if not lines:
-        print(json.dumps({"include": []}))
-        return 0
-
     include: list[dict[str, str]] = []
-    reader = csv.DictReader(lines)
-    for row in reader:
-        source_path = (row.get("source_path") or "").strip()
-        target_repo = (row.get("target_repo") or "").strip()
-        if source_path and target_repo:
+    with manifest.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.reader(handle)
+        for row in reader:
+            if len(row) < 2:
+                continue
+
+            source_path = row[0].strip()
+            target_repo = row[1].strip()
+
+            if not source_path:
+                continue
+
+            if source_path.startswith("#"):
+                header_source = source_path.lstrip("#").strip()
+                if header_source == "source_path" and target_repo == "target_repo":
+                    continue
+                continue
+
+            if source_path == "source_path" and target_repo == "target_repo":
+                continue
+
             include.append({"source_path": source_path, "target_repo": target_repo})
 
     print(json.dumps({"include": include}))

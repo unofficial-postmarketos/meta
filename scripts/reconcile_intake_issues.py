@@ -17,19 +17,30 @@ def run_gh(*args: str) -> subprocess.CompletedProcess[str]:
 
 
 def read_manifest(manifest_path: Path) -> list[tuple[str, str]]:
-    with manifest_path.open("r", encoding="utf-8", newline="") as handle:
-        lines = [line for line in handle if line.strip() and not line.startswith("#")]
-
-    if not lines:
-        return []
-
     entries: list[tuple[str, str]] = []
-    reader = csv.DictReader(lines)
-    for row in reader:
-        source_path = (row.get("source_path") or "").strip()
-        target_repo = (row.get("target_repo") or "").strip()
-        if source_path and target_repo:
-            entries.append((source_path, target_repo))
+    with manifest_path.open("r", encoding="utf-8", newline="") as handle:
+        reader = csv.reader(handle)
+        for row in reader:
+            if len(row) < 2:
+                continue
+
+            first = row[0].strip()
+            second = row[1].strip()
+
+            if not first:
+                continue
+
+            if first.startswith("#"):
+                header_first = first.lstrip("#").strip()
+                if header_first == "source_path" and second == "target_repo":
+                    continue
+                continue
+
+            if first == "source_path" and second == "target_repo":
+                continue
+
+            entries.append((first, second))
+
     return entries
 
 

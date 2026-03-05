@@ -84,16 +84,27 @@ import sys
 manifest = sys.argv[1]
 
 with open(manifest, "r", encoding="utf-8", newline="") as handle:
-    lines = [line for line in handle if line.strip() and not line.startswith("#")]
+    reader = csv.reader(handle)
+    for row in reader:
+        if len(row) < 2:
+            continue
 
-if not lines:
-    raise SystemExit(0)
+        first = row[0].strip()
+        second = row[1].strip()
 
-reader = csv.DictReader(lines)
-for row in reader:
-    target_repo = (row.get("target_repo") or "").strip()
-    if target_repo:
-        print(target_repo)
+        if not first:
+            continue
+
+        if first.startswith("#"):
+            header_first = first.lstrip("#").strip()
+            if header_first == "source_path" and second == "target_repo":
+                continue
+            continue
+
+        if first == "source_path" and second == "target_repo":
+            continue
+
+        print(second)
 PY
     if [ -z "$target_repo" ]; then
         continue
