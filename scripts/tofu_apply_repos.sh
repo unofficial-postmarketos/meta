@@ -112,4 +112,29 @@ PY
     import_if_exists "github_repository.mirror[\"$target_repo\"]" "$target_repo"
 done
 
-tofu apply -input=false -auto-approve
+plan_path=$(mktemp)
+
+cleanup_plan() {
+    rm -f "$plan_path"
+}
+
+trap cleanup_plan EXIT INT TERM
+
+set +e
+tofu plan -input=false -detailed-exitcode -out="$plan_path"
+plan_exit_code=$?
+set -e
+
+case "$plan_exit_code" in
+    0)
+        printf 'no OpenTofu changes detected; skipping apply\n'
+        exit 0
+        ;;
+    2)
+        tofu apply -input=false -auto-approve "$plan_path"
+        ;;
+    *)
+        printf 'tofu plan failed with exit code %s\n' "$plan_exit_code" >&2
+        exit "$plan_exit_code"
+        ;;
+esac
