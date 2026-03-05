@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       matrix: ${{ steps.matrix.outputs.matrix }}
+      count: ${{ steps.matrix.outputs.count }}
 
     steps:
       - name: Checkout repository
@@ -20,11 +21,21 @@ jobs:
         shell: sh
         run: |
           matrix_json=$(python3 scripts/build_mirror_matrix.py config/repos.mirrored.csv)
+          entry_count=$(python3 - "$matrix_json" <<'PY'
+          import json
+          import sys
+
+          payload = json.loads(sys.argv[1])
+          print(len(payload.get("include", [])))
+          PY
+          )
           printf 'matrix=%s\n' "$matrix_json" >> "$GITHUB_OUTPUT"
+          printf 'count=%s\n' "$entry_count" >> "$GITHUB_OUTPUT"
 
   mirror:
     needs:
       - build-matrix
+    if: needs.build-matrix.outputs.count != '0'
     runs-on: ubuntu-latest
     strategy:
       fail-fast: false
