@@ -16,15 +16,20 @@ jobs:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Reconcile meta repository with OpenTofu
+      - name: Install OpenTofu
         shell: sh
         env:
-          GITHUB_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
-          TOFU_STATE_PASSPHRASE: ${{ secrets.TOFU_STATE_PASSPHRASE }}
+          TOFU_VERSION: 1.10.7
         run: |
-          tofu init -input=false
-          tofu import -input=false github_repository.meta unofficial-postmarketos/meta || true
-          tofu apply -input=false -auto-approve
+          scripts/install_tofu.sh "$TOFU_VERSION" "$HOME/.local/bin"
+          printf '%s\n' "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Reconcile managed repositories with OpenTofu
+        shell: sh
+        env:
+          GH_ADMIN_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
+          TOFU_STATE_PASSPHRASE: ${{ secrets.TOFU_STATE_PASSPHRASE }}
+        run: scripts/tofu_apply_repos.sh config/repos.mirrored.csv
 
       - name: Commit and push state updates
         shell: sh
