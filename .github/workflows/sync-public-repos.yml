@@ -10,6 +10,7 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: write
+      issues: write
 
     steps:
       - name: Checkout repository
@@ -36,5 +37,11 @@ jobs:
           fi
 
           git add config/repos.csv
-          git commit -m "sync public postmarketOS repository list"
+          git commit -m "chore(sync): refresh public repository manifest"
           git push origin HEAD:main
+
+      - name: Reconcile intake issues
+        shell: sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: python3 scripts/reconcile_intake_issues.py config/repos.csv
