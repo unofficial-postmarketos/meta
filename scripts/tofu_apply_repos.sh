@@ -61,7 +61,7 @@ import_if_exists() {
     )
 
     if [ "$http_status" = 200 ]; then
-        tofu import -input=false "$address" "$repo_full_name" >/dev/null
+        tofu import -input=false "$address" "$repo_name" >/dev/null
         printf 'imported existing repository %s\n' "$repo_full_name"
         return 0
     fi
