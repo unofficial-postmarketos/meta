@@ -53,7 +53,7 @@ that works on both GitHub Actions and Forgejo Actions.
 - Mirror input is `config/repos.csv` with records: `source_path,target_repo`.
 - `source_path` is the full GitLab project path without `.git`.
 - `target_repo` is the repository name under the target org/owner.
-- Mirroring is performed with `git clone --mirror` then `git push --mirror`.
+- Syncing is default-branch-only: detect upstream default branch from `HEAD`, then force-push that branch to the target repository.
 
 ## Operating principles
 

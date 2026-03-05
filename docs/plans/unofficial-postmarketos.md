@@ -85,7 +85,7 @@ Each generated file must be sorted with `LC_ALL=C sort` to prevent churn.
 - Triggers: frequent schedule + `workflow_dispatch`.
 - Behavior:
   - validate manifest,
-  - mirror `config/repos.csv` entries (`git clone --mirror` + `git push --mirror`),
+  - sync default branches for `config/repos.csv` entries (resolve upstream `HEAD`, then force-push that branch),
   - allow ad hoc single-repo runs for testing.
 
 ### 6) `validate-meta`

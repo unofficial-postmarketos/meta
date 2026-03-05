@@ -11,6 +11,7 @@ target_repo=$2
 
 gitlab_base_url=${GITLAB_BASE_URL:-https://gitlab.postmarketos.org}
 github_owner=${GITHUB_OWNER:-unofficial-postmarketos}
+github_api_url=${GITHUB_API_URL:-https://api.github.com}
 
 primary_push_token=${TARGET_PUSH_TOKEN:-}
 fallback_push_token=${GH_ADMIN_TOKEN:-}
@@ -19,6 +20,8 @@ if [ -z "$primary_push_token" ] && [ -z "$fallback_push_token" ]; then
     printf 'set TARGET_PUSH_TOKEN or GH_ADMIN_TOKEN\n' >&2
     exit 1
 fi
+
+export GIT_TERMINAL_PROMPT=0
 
 tmp_dir=$(mktemp -d)
 
@@ -50,28 +53,86 @@ if [ -n "${SOURCE_READ_TOKEN:-}" ]; then
     esac
 fi
 
-push_with_token() {
+source_default_branch=$(
+    git ls-remote --symref "$source_repo_url" HEAD | {
+        IFS= read -r line || true
+        printf '%s' "$line"
+    }
+)
+
+case "$source_default_branch" in
+    ref:\ refs/heads/*)
+        source_default_branch=${source_default_branch#ref: refs/heads/}
+        source_default_branch=${source_default_branch%%[[:space:]]*}
+        ;;
+    *)
+        printf 'unable to resolve source default branch for %s\n' "$source_path" >&2
+        exit 1
+        ;;
+esac
+
+if [ -z "$source_default_branch" ]; then
+    printf 'source default branch for %s is empty\n' "$source_path" >&2
+    exit 1
+fi
+
+push_default_branch_with_token() {
     token=$1
     target_repo_url=https://x-access-token:${token}@github.com/$github_owner/$target_repo.git
-    git -C "$tmp_dir/repo.git" push --mirror "$target_repo_url"
+    git -C "$tmp_dir/repo" push --force "$target_repo_url" \
+        "refs/remotes/source/$source_default_branch:refs/heads/$source_default_branch"
 }
 
-export GIT_TERMINAL_PROMPT=0
+set_target_default_branch() {
+    token=$1
+    http_status=$(
+        curl --silent --show-error --output /dev/null --write-out '%{http_code}' \
+            --request PATCH \
+            --header 'Accept: application/vnd.github+json' \
+            --header "Authorization: Bearer $token" \
+            --header 'X-GitHub-Api-Version: 2022-11-28' \
+            --header "Content-Type: application/json" \
+            --data "{\"default_branch\":\"$source_default_branch\"}" \
+            "$github_api_url/repos/$github_owner/$target_repo"
+    )
 
-printf 'mirroring %s -> %s/%s\n' "$source_path" "$github_owner" "$target_repo"
-git clone --mirror "$source_repo_url" "$tmp_dir/repo.git"
+    if [ "$http_status" = 200 ]; then
+        printf 'set target default branch to %s\n' "$source_default_branch"
+        return 0
+    fi
 
+    printf 'warning: unable to set target default branch to %s (HTTP %s)\n' \
+        "$source_default_branch" "$http_status" >&2
+}
+
+printf 'syncing default branch %s for %s -> %s/%s\n' \
+    "$source_default_branch" "$source_path" "$github_owner" "$target_repo"
+
+git init "$tmp_dir/repo" >/dev/null
+git -C "$tmp_dir/repo" remote add source "$source_repo_url"
+git -C "$tmp_dir/repo" fetch --no-tags source \
+    "refs/heads/$source_default_branch:refs/remotes/source/$source_default_branch"
+
+push_token_used=
 if [ -n "$primary_push_token" ]; then
-    if ! push_with_token "$primary_push_token"; then
+    if push_default_branch_with_token "$primary_push_token"; then
+        push_token_used=$primary_push_token
+    else
         if [ -n "$fallback_push_token" ] && [ "$fallback_push_token" != "$primary_push_token" ]; then
             printf 'primary push token failed; retrying with GH_ADMIN_TOKEN\n' >&2
-            push_with_token "$fallback_push_token"
+            push_default_branch_with_token "$fallback_push_token"
+            push_token_used=$fallback_push_token
         else
             exit 1
         fi
     fi
 else
-    push_with_token "$fallback_push_token"
+    push_default_branch_with_token "$fallback_push_token"
+    push_token_used=$fallback_push_token
 fi
 
-printf 'mirror completed for %s\n' "$target_repo"
+if [ -n "$push_token_used" ]; then
+    set_target_default_branch "$push_token_used"
+fi
+
+printf 'default branch sync completed for %s\n' "$target_repo"
