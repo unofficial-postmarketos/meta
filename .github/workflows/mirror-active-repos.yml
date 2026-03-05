@@ -1,0 +1,46 @@
+name: Mirror Active Repositories
+
+on:
+  schedule:
+    - cron: "41 2 * * *"
+  workflow_dispatch:
+
+jobs:
+  build-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.matrix.outputs.matrix }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Build mirror matrix
+        id: matrix
+        shell: sh
+        run: |
+          matrix_json=$(python3 scripts/build_mirror_matrix.py config/repos.mirrored.csv)
+          printf 'matrix=%s\n' "$matrix_json" >> "$GITHUB_OUTPUT"
+
+  mirror:
+    needs:
+      - build-matrix
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      max-parallel: 5
+      matrix: ${{ fromJson(needs.build-matrix.outputs.matrix) }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Mirror repository
+        shell: sh
+        env:
+          SOURCE_READ_TOKEN: ${{ secrets.SOURCE_READ_TOKEN }}
+          TARGET_PUSH_TOKEN: ${{ secrets.TARGET_PUSH_TOKEN }}
+        run: |
+          scripts/mirror_repo.sh \
+            "${{ matrix.source_path }}" \
+            "${{ matrix.target_repo }}"

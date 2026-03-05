@@ -1,0 +1,106 @@
+name: IssueOps Mirrored Activation
+
+on:
+  issues:
+    types:
+      - labeled
+  workflow_dispatch:
+    inputs:
+      source_path:
+        description: Source project path in GitLab
+        required: true
+      target_repo:
+        description: Target repository name in GitHub
+        required: true
+
+jobs:
+  activate:
+    if: github.event_name == 'workflow_dispatch' || github.event.label.name == 'mirrored'
+    runs-on: ubuntu-latest
+    concurrency:
+      group: issueops-mirrored-state
+      cancel-in-progress: false
+    permissions:
+      contents: write
+      issues: write
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Resolve source and target
+        id: repo
+        shell: sh
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
+            printf 'source_path=%s\n' "${{ github.event.inputs.source_path }}" >> "$GITHUB_OUTPUT"
+            printf 'target_repo=%s\n' "${{ github.event.inputs.target_repo }}" >> "$GITHUB_OUTPUT"
+          else
+            python3 scripts/issueops_extract_repo.py "$GITHUB_EVENT_PATH" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Append entry to mirrored manifest
+        id: manifest
+        shell: sh
+        run: |
+          python3 scripts/update_mirrored_manifest.py \
+            config/repos.mirrored.csv \
+            "${{ steps.repo.outputs.source_path }}" \
+            "${{ steps.repo.outputs.target_repo }}" \
+            config/repos.csv >> "$GITHUB_OUTPUT"
+
+      - name: Install OpenTofu
+        shell: sh
+        env:
+          TOFU_VERSION: 1.10.7
+        run: |
+          scripts/install_tofu.sh "$TOFU_VERSION" "$HOME/.local/bin"
+          printf '%s\n' "$HOME/.local/bin" >> "$GITHUB_PATH"
+
+      - name: Reconcile repositories with OpenTofu
+        shell: sh
+        env:
+          GH_ADMIN_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
+          TOFU_STATE_PASSPHRASE: ${{ secrets.TOFU_STATE_PASSPHRASE }}
+        run: scripts/tofu_apply_repos.sh config/repos.mirrored.csv
+
+      - name: Commit and push activation state
+        shell: sh
+        env:
+          GIT_AUTHOR_NAME: unofficial-postmarketos-bot
+          GIT_AUTHOR_EMAIL: actions@users.noreply.github.com
+          GIT_COMMITTER_NAME: unofficial-postmarketos-bot
+          GIT_COMMITTER_EMAIL: actions@users.noreply.github.com
+        run: |
+          if [ -z "$(git status --porcelain -- config/repos.mirrored.csv terraform.tfstate)" ]; then
+            printf 'activation state unchanged; nothing to commit\n'
+            exit 0
+          fi
+
+          git add config/repos.mirrored.csv terraform.tfstate
+          git commit -m "chore(issueops): activate mirror for ${{ steps.repo.outputs.target_repo }}"
+          git push origin HEAD:main
+
+      - name: Run one-off mirror sync
+        shell: sh
+        env:
+          SOURCE_READ_TOKEN: ${{ secrets.SOURCE_READ_TOKEN }}
+          TARGET_PUSH_TOKEN: ${{ secrets.TARGET_PUSH_TOKEN }}
+        run: |
+          scripts/mirror_repo.sh \
+            "${{ steps.repo.outputs.source_path }}" \
+            "${{ steps.repo.outputs.target_repo }}"
+
+      - name: Comment on issue
+        if: github.event_name == 'issues'
+        shell: sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh issue comment "${{ github.event.issue.number }}" --body "$(cat <<'EOF'
+          Mirror activation completed.
+
+          - source: `${{ steps.repo.outputs.source_path }}`
+          - target: `${{ steps.repo.outputs.target_repo }}`
+          EOF
+          )"
