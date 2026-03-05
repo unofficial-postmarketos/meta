@@ -35,6 +35,7 @@ that works on both GitHub Actions and Forgejo Actions.
 ## Commit message style
 
 - Use Conventional Commits (`type(scope): subject`) for all commits.
+- This applies to automation and agent-authored commits as well.
 - Keep subjects concise and imperative (for example: `feat(sync): add daily repo discovery`).
 
 ## Security and credentials
