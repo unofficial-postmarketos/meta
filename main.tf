@@ -34,9 +34,10 @@ locals {
 resource "github_repository" "mirror" {
   for_each = local.mirrored_repo_map
 
-  name        = each.value.target_repo
-  description = "Mirror of ${each.value.source_path} from gitlab.postmarketos.org"
-  visibility  = "public"
+  name         = each.value.target_repo
+  description  = "Mirror of ${each.value.source_path} from gitlab.postmarketos.org"
+  homepage_url = "https://gitlab.postmarketos.org/${each.value.source_path}"
+  visibility   = "public"
 
   has_issues             = false
   has_wiki               = false
