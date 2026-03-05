@@ -12,6 +12,7 @@ target_repo=$2
 gitlab_base_url=${GITLAB_BASE_URL:-https://gitlab.postmarketos.org}
 github_owner=${GITHUB_OWNER:-unofficial-postmarketos}
 github_api_url=${GITHUB_API_URL:-https://api.github.com}
+mirror_output_file=${MIRROR_OUTPUT_FILE:-}
 
 primary_push_token=${TARGET_PUSH_TOKEN:-}
 fallback_push_token=${GH_ADMIN_TOKEN:-}
@@ -105,6 +106,17 @@ set_target_default_branch() {
         "$source_default_branch" "$http_status" >&2
 }
 
+write_mirror_output() {
+    key=$1
+    value=$2
+
+    if [ -z "$mirror_output_file" ]; then
+        return 0
+    fi
+
+    printf '%s=%s\n' "$key" "$value" >> "$mirror_output_file"
+}
+
 printf 'syncing default branch %s for %s -> %s/%s\n' \
     "$source_default_branch" "$source_path" "$github_owner" "$target_repo"
 
@@ -112,6 +124,11 @@ git init "$tmp_dir/repo" >/dev/null
 git -C "$tmp_dir/repo" remote add source "$source_repo_url"
 git -C "$tmp_dir/repo" fetch --no-tags source \
     "refs/heads/$source_default_branch:refs/remotes/source/$source_default_branch"
+
+source_head_sha=$(git -C "$tmp_dir/repo" rev-parse "refs/remotes/source/$source_default_branch")
+
+write_mirror_output default_branch "$source_default_branch"
+write_mirror_output source_head_sha "$source_head_sha"
 
 push_token_used=
 if [ -n "$primary_push_token" ]; then

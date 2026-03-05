@@ -37,6 +37,9 @@ jobs:
       - build-matrix
     if: needs.build-matrix.outputs.count != '0'
     runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      issues: write
     strategy:
       fail-fast: false
       max-parallel: 5
@@ -47,12 +50,32 @@ jobs:
         uses: actions/checkout@v4
 
       - name: Mirror repository
+        id: mirror
         shell: sh
         env:
           SOURCE_READ_TOKEN: ${{ secrets.SOURCE_READ_TOKEN }}
           TARGET_PUSH_TOKEN: ${{ secrets.TARGET_PUSH_TOKEN }}
           GH_ADMIN_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
         run: |
+          export MIRROR_OUTPUT_FILE="$GITHUB_OUTPUT"
           scripts/mirror_repo.sh \
             "${{ matrix.source_path }}" \
             "${{ matrix.target_repo }}"
+
+      - name: Update intake issue sync metadata
+        if: always() && (steps.mirror.outcome == 'success' || steps.mirror.outcome == 'failure')
+        shell: sh
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          synced_at=$(date -u +"%Y-%m-%dT%H:%M:%SZ")
+          run_url="${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}"
+
+          python3 scripts/update_intake_issue_sync_status.py \
+            "${{ matrix.source_path }}" \
+            "${{ matrix.target_repo }}" \
+            "${{ steps.mirror.outcome }}" \
+            "$synced_at" \
+            "${{ steps.mirror.outputs.default_branch || 'n/a' }}" \
+            "${{ steps.mirror.outputs.source_head_sha || 'n/a' }}" \
+            "$run_url"
