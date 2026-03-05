@@ -51,6 +51,7 @@ jobs:
         env:
           SOURCE_READ_TOKEN: ${{ secrets.SOURCE_READ_TOKEN }}
           TARGET_PUSH_TOKEN: ${{ secrets.TARGET_PUSH_TOKEN }}
+          GH_ADMIN_TOKEN: ${{ secrets.GH_ADMIN_TOKEN }}
         run: |
           scripts/mirror_repo.sh \
             "${{ matrix.source_path }}" \
