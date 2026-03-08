@@ -22,6 +22,7 @@ postmarketOS/coldbrew,coldbrew
 postmarketOS/continuous-testing/upstream-compat,continuous-testing_s_upstream-compat
 postmarketOS/depthcharge-tools,depthcharge-tools
 postmarketOS/dint,dint
+postmarketOS/docker-postmarketos,docker-postmarketos
 postmarketOS/docs.postmarketos.org,docs.postmarketos.org
 postmarketOS/duranium,duranium
 postmarketOS/duranium.postmarketos.org,duranium.postmarketos.org
