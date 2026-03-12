@@ -23,6 +23,7 @@ postmarketOS/continuous-testing/upstream-compat,continuous-testing_s_upstream-co
 postmarketOS/depthcharge-tools,depthcharge-tools
 postmarketOS/dint,dint
 postmarketOS/docker-postmarketos,docker-postmarketos
+postmarketOS/docker-postmarketos-deletion_scheduled-1229,docker-postmarketos-deletion__scheduled-1229
 postmarketOS/docs.postmarketos.org,docs.postmarketos.org
 postmarketOS/duranium,duranium
 postmarketOS/duranium.postmarketos.org,duranium.postmarketos.org
